@@ -28,7 +28,7 @@ export async function getTableByQRCode(qrCodeId: string): Promise<{
 }
 
 /**
- * Get table by restaurant slug and table ID
+ * Get table by restaurant slug and table ID (qr_code_id)
  */
 export async function getTableBySlugAndId(
   slug: string,
@@ -54,6 +54,48 @@ export async function getTableBySlugAndId(
   return {
     table: data,
     restaurant: data.restaurant as Restaurant,
+  };
+}
+
+/**
+ * Get table by restaurant slug and table number (for simplified URLs)
+ */
+export async function getTableBySlugAndNumber(
+  slug: string,
+  tableNumber: string
+): Promise<{
+  table: Table | null;
+  restaurant: Restaurant | null;
+} | null> {
+  // First get the restaurant by slug
+  const { data: restaurant, error: restaurantError } = await supabase
+    .from('restaurants')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (restaurantError || !restaurant) {
+    return { table: null, restaurant: null };
+  }
+
+  // Decode URL-encoded table number (e.g., "Table%2067" -> "Table 67")
+  const decodedTableNumber = decodeURIComponent(tableNumber);
+
+  // Then get the table by restaurant_id and table_number
+  const { data, error } = await supabase
+    .from('tables')
+    .select('*')
+    .eq('table_number', decodedTableNumber)
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { table: null, restaurant: null };
+  }
+
+  return {
+    table: data,
+    restaurant: restaurant,
   };
 }
 

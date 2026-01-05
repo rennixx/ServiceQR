@@ -42,7 +42,7 @@ export async function generateAllQRCodes(tables: Array<{
 
   const qrCodes = await Promise.all(
     tables.map(async (table) => {
-      const url = `${baseUrl}/table/${restaurantSlug}/${table.qr_code_id}`;
+      const url = `${baseUrl}/${restaurantSlug}/${table.table_number}`;
       const dataURL = await generateQRCodeDataURL(url);
       return {
         tableNumber: table.table_number,

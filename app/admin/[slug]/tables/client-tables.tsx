@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Save, X, QrCode, UtensilsCrossed, Download, Printer } from 'lucide-react';
 import { Restaurant, Table } from '@/src/types/database';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -32,10 +32,41 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
   const [qrModal, setQrModal] = useState<QRCodeModal>({ table: null, dataURL: '' });
   const [showAllQrModal, setShowAllQrModal] = useState(false);
   const [allQrCodes, setAllQrCodes] = useState<Array<{ tableNumber: string; dataURL: string }>>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Get next available sequential table number
+  const getNextTableNumber = (): string => {
+    // Extract numeric values from existing table numbers
+    const numericTableNumbers = tables
+      .map(t => {
+        const match = t.table_number.match(/\d+/);
+        return match ? parseInt(match[0], 10) : null;
+      })
+      .filter((n): n is number => n !== null)
+      .sort((a, b) => a - b);
+
+    // Find the first missing number
+    let nextNumber = 1;
+    for (const num of numericTableNumbers) {
+      if (num === nextNumber) {
+        nextNumber++;
+      } else if (num > nextNumber) {
+        // Found a gap
+        break;
+      }
+    }
+
+    return nextNumber.toString();
+  };
 
   const handleCreate = () => {
     setIsCreating(true);
-    setEditingTable({ id: null, table_number: '', qr_code_id: `${restaurant.slug}-table-${Date.now()}` });
+    const nextNumber = getNextTableNumber();
+    setEditingTable({ id: null, table_number: nextNumber, qr_code_id: `${restaurant.slug}-table-${Date.now()}` });
   };
 
   const handleEdit = (table: Table) => {
@@ -103,7 +134,7 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
   };
 
   const handleShowQR = async (table: Table) => {
-    const url = `${window.location.origin}/table/${restaurant.slug}/${table.qr_code_id}`;
+    const url = `${window.location.origin}/${restaurant.slug}/${table.table_number}`;
     const dataURL = await generateQRCodeDataURL(url);
     setQrModal({ table, dataURL });
   };
@@ -116,7 +147,7 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
     const baseUrl = window.location.origin;
     const codes = await Promise.all(
       tables.map(async (table) => {
-        const url = `${baseUrl}/table/${restaurant.slug}/${table.qr_code_id}`;
+        const url = `${baseUrl}/${restaurant.slug}/${table.table_number}`;
         const dataURL = await generateQRCodeDataURL(url);
         return {
           tableNumber: table.table_number,
@@ -167,8 +198,9 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
     printWindow.print();
   };
 
-  const getTableUrl = (qrCodeId: string) => {
-    return `${window.location.origin}/table/${restaurant.slug}/${qrCodeId}`;
+  const getTableUrl = (tableNumber: string) => {
+    if (!isMounted) return '';
+    return `${window.location.origin}/${restaurant.slug}/${tableNumber}`;
   };
 
   return (
@@ -348,16 +380,18 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
                     <div className="text-sm text-slate-400 font-mono mt-1">{table.qr_code_id}</div>
                   </div>
 
-                  <div className="pt-4 border-t border-white/10">
-                    <a
-                      href={getTableUrl(table.qr_code_id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:text-primary/80 transition-colors"
-                    >
-                      {getTableUrl(table.qr_code_id)}
-                    </a>
-                  </div>
+                  {isMounted && (
+                    <div className="pt-4 border-t border-white/10">
+                      <a
+                        href={getTableUrl(table.table_number)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:text-primary/80 transition-colors"
+                      >
+                        {getTableUrl(table.table_number)}
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
             </GlassCard>
@@ -419,9 +453,11 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
                 <img src={qrModal.dataURL} alt="QR Code" className="w-64 h-64" />
               </div>
 
-              <div className="text-xs text-slate-500 mb-6 break-all font-mono">
-                {qrModal.table && getTableUrl(qrModal.table.qr_code_id)}
-              </div>
+              {isMounted && (
+                <div className="text-xs text-slate-500 mb-6 break-all font-mono">
+                  {qrModal.table && getTableUrl(qrModal.table.table_number)}
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <button
