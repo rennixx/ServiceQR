@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Star } from 'lucide-react';
 import { createServiceRequest } from '@/app/actions';
 import { Restaurant, Table, ServiceRequestType } from '@/src/types/database';
 import { ServiceCard } from '@/components/ServiceCard';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { createFeedback } from '@/lib/feedback';
 
 interface GuestTablePageProps {
   table: Table;
@@ -30,6 +31,11 @@ export default function GuestTablePage({ table, restaurant }: GuestTablePageProp
     water: { isLoading: false, isSuccess: false, error: null },
     bill: { isLoading: false, isSuccess: false, error: null },
   });
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const handleServiceRequest = async (type: ServiceRequestType) => {
     setRequestStates((prev) => ({
@@ -63,6 +69,19 @@ export default function GuestTablePage({ table, restaurant }: GuestTablePageProp
           [type]: { ...prev[type], error: null },
         }));
       }, 3000);
+    }
+  };
+
+  const handleSubmitFeedback = async (ratingValue: number, commentValue?: string) => {
+    const result = await createFeedback(table.id, null, ratingValue, commentValue);
+    if (result.success) {
+      setFeedbackSubmitted(true);
+      setTimeout(() => {
+        setShowFeedback(false);
+        setFeedbackSubmitted(false);
+        setRating(0);
+        setComment('');
+      }, 2000);
     }
   };
 
@@ -136,6 +155,96 @@ export default function GuestTablePage({ table, restaurant }: GuestTablePageProp
                 theme={restaurant.theme_config}
               />
             </div>
+
+            {/* Rating Card */}
+            <GlassCard theme={restaurant.theme_config} className="p-6 text-center">
+              {!showFeedback ? (
+                <>
+                  <h3 className="font-semibold text-white mb-4">
+                    {feedbackSubmitted ? 'Thank you for your feedback!' : 'Rate your experience'}
+                  </h3>
+                  <div className="flex justify-center gap-2 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => {
+                          setRating(star);
+                          setShowFeedback(true);
+                        }}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        disabled={feedbackSubmitted}
+                        className="transition-transform hover:scale-110 disabled:opacity-50"
+                      >
+                        <Star
+                          className={`w-8 h-8 ${
+                            star <= (hoverRating || rating)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-slate-600'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-white/60">
+                    {feedbackSubmitted ? 'We appreciate your rating!' : 'Tap a star to leave a detailed review'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-white mb-4">How was your experience?</h3>
+                  <div className="flex justify-center gap-2 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        disabled={feedbackSubmitted}
+                        className="transition-transform hover:scale-110 disabled:opacity-50"
+                      >
+                        <Star
+                          className={`w-10 h-10 ${
+                            star <= (hoverRating || rating)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-slate-600'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Tell us more about your experience... (optional)"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:ring-2 focus:ring-primary focus:border-transparent resize-none mb-4"
+                    rows={3}
+                    disabled={feedbackSubmitted}
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleSubmitFeedback(rating, comment)}
+                      disabled={rating === 0 || feedbackSubmitted}
+                      className="flex-1 px-6 py-2 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all disabled:opacity-50"
+                    >
+                      {feedbackSubmitted ? 'Thank you!' : 'Submit Review'}
+                    </button>
+                    {!feedbackSubmitted && (
+                      <button
+                        onClick={() => {
+                          setShowFeedback(false);
+                          setRating(0);
+                          setComment('');
+                        }}
+                        className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-all"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </GlassCard>
 
             {/* Info Card */}
             <GlassCard theme={restaurant.theme_config} className="p-6">

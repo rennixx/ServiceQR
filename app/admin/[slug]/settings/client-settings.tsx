@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Palette, Image, Sliders, Type, Monitor, Sparkles, RotateCcw, UtensilsCrossed } from 'lucide-react';
+import { Palette, Image, Sliders, Type, Monitor, Sparkles, RotateCcw, UtensilsCrossed, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
 import { updateRestaurantTheme } from '@/app/actions';
 import { Restaurant, ThemeConfig, BorderStyle, FontPairing } from '@/src/types/database';
@@ -100,6 +100,13 @@ export default function AdminSettings({ restaurant }: AdminSettingsProps) {
               </div>
             </div>
             <div className="flex gap-3">
+              <Link
+                href={`/dashboard/${restaurant.slug}`}
+                className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 text-white rounded-xl transition-colors flex items-center gap-2"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
               <Link
                 href={`/admin/${restaurant.slug}/tables`}
                 className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 text-white rounded-xl transition-colors flex items-center gap-2"
