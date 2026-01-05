@@ -23,6 +23,11 @@ interface QRCodeModal {
   dataURL: string;
 }
 
+interface DeleteModal {
+  isOpen: boolean;
+  table: Table | null;
+}
+
 export default function TablesClient({ restaurant, initialTables }: TablesClientProps) {
   const [tables, setTables] = useState<Table[]>(initialTables);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,6 +38,8 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
   const [showAllQrModal, setShowAllQrModal] = useState(false);
   const [allQrCodes, setAllQrCodes] = useState<Array<{ tableNumber: string; dataURL: string }>>([]);
   const [isMounted, setIsMounted] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<DeleteModal>({ isOpen: false, table: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -113,18 +120,26 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
   };
 
   const handleDelete = async (tableId: string) => {
-    if (!confirm('Are you sure you want to delete this table?')) return;
+    setDeleteModal({ isOpen: true, table: tables.find(t => t.id === tableId) || null });
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteModal.table) return;
+
+    setIsDeleting(true);
     try {
-      const result = await deleteTable(tableId);
+      const result = await deleteTable(deleteModal.table.id);
       if (result.success) {
-        setTables(tables.filter(t => t.id !== tableId));
+        setTables(tables.filter(t => t.id !== deleteModal.table?.id));
         showSaveMessage('saved');
+        setDeleteModal({ isOpen: false, table: null });
       } else {
         alert(result.error);
       }
     } catch (error) {
       alert('An error occurred');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -472,6 +487,49 @@ export default function TablesClient({ restaurant, initialTables }: TablesClient
                   className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-all"
                 >
                   Close
+                </button>
+              </div>
+            </GlassCard>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.isOpen && deleteModal.table && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <GlassCard className="max-w-md w-full p-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Delete Table?</h3>
+              <p className="text-slate-400 mb-2">
+                Are you sure you want to delete <span className="text-white font-semibold">Table {deleteModal.table.table_number}</span>?
+              </p>
+              <p className="text-slate-500 text-sm mb-6">This action cannot be undone.</p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteModal({ isOpen: false, table: null })}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </>
+                  )}
                 </button>
               </div>
             </GlassCard>
